@@ -1,6 +1,5 @@
 import customtkinter as ctk
 from tkinter import *
-import ttkbootstrap as tb
 import sqlite3
 from tkinter import messagebox
 from datetime import datetime
