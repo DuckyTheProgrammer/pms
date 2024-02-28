@@ -1,11 +1,10 @@
-from typing import Tuple
 import customtkinter as ctk
 from tkinter import *
 import ttkbootstrap as tb
-from PIL import Image, ImageTk
 import sqlite3
-import tkinter.messagebox as messagebox
+from tkinter import messagebox
 from datetime import datetime
+
 
 
 
@@ -60,8 +59,7 @@ def create_medicine_database():
                             id INTEGER PRIMARY KEY AUTOINCREMENT,
                             Name TEXT,
                             Supplier TEXT,
-                            Amount TEXT,
-                            PhoneNumber TEXT,
+                            Amount INTEGER,
                             Date TEXT
                           )''')
         print("Table 'medicine' created.")
@@ -368,7 +366,7 @@ class App(ctk.CTk):
             date_entry = ctk.CTkEntry(supplierAdd, state='disabled', textvariable=mystr, width=200)
             date_entry.pack(pady=10)
 
-            def addInfo():
+            def addSupplierInfo():
                 getName = supplierName.get()
                 getAddress = supplierAddress.get()
                 getPhoneNumber = supplierPhoneNumber.get()
@@ -382,17 +380,60 @@ class App(ctk.CTk):
                 c.execute("SELECT Name FROM supplier")
                 names = c.fetchall()
                 print(names)
-                supplier_entry.configure(values=list(names))
+
+                supplier_entry.configure(values=[row[0] for row in names])
+                 
                 conn.commit()
             
             
-            btn = ctk.CTkButton(supplierAdd, text="Add Supplier", command=addInfo)
+            btn = ctk.CTkButton(supplierAdd, text="Add Supplier", command=addSupplierInfo)
             btn.pack()
 
             supplierAdd.after(100, supplierAdd.lift)
             supplierAdd.mainloop()
 
+        def addMedicine():
+            all_entries = [
+                medicine_name_entry,
+                supplier_entry,
+                medicine_amout_entry,
+                medicine_date_entry
+            ]
+
+            conn = sqlite3.connect('medicine.db')
+            cursor = conn.cursor()
+
+            values = [entry.get() for entry in all_entries]
+
+            cursor.execute("SELECT * FROM medicine")
+            medicine_data = cursor.fetchall()
+            print(medicine_data)
             
+            if not medicine_data:
+                cursor.execute("INSERT INTO medicine(Name, Supplier, Amount, Date) VALUES (?, ?, ?, ?)", values)  
+                conn.commit()  
+                print('Inserted New Data')
+            else:
+                print('Detected same medicine and supplier... changing amount of the medicine')
+                addedamount = int(medicine_data[0][3]) + int(values[2])
+                print(addedamount)
+                cursor.execute('''UPDATE medicine SET Amount = ?
+                                WHERE Name = ? AND Supplier = ?
+                ''',(addedamount, values[0], values[1]))
+                conn.commit()
+                messagebox.showinfo("PMS - Info", "Detected same medicine and supplier, Just changing amount of medicine")
+        
+        
+
+        conn = sqlite3.connect('supplier.db')
+        c = conn.cursor()
+        c.execute("SELECT Name FROM supplier")
+        suppliers = c.fetchall()
+
+         
+        s_values= [
+            row[0] for row in suppliers
+        ]
         
         
         new_medicine_frame = ctk.CTkFrame(self, width=self.winfo_screenwidth(), height=self.winfo_screenheight())
@@ -408,15 +449,36 @@ class App(ctk.CTk):
         medicine_name_label.grid(row=0, column=0, padx=(15,0), pady=(50,5), sticky="w")
         medicine_name_entry.grid(row=0, column=1, padx=(5,15), pady=(50,5))
 
-        select_supplier_label = ctk.CTkLabel(add_medicine_frame, text="Select Supplier", width=50, font=('Bold', 17), justify="left")
+        select_supplier_label = ctk.CTkLabel(add_medicine_frame, text="Choose Supplier ", width=50, font=('Bold', 15), justify="left")
         select_supplier_label.grid(row=3, column=0, padx=(15,0), pady=(5,5), sticky="w")
-        supplier_entry = ctk.CTkOptionMenu(add_medicine_frame, width=200
+        supplier_entry = ctk.CTkOptionMenu(add_medicine_frame, width=200,
+                                           values=s_values
                                        )
         supplier_entry.grid(row=3, column=1, padx=(5,15), pady=(5,5))
         supplier_entry.set('Choose Supplier')
 
         add_supplier = ctk.CTkButton(add_medicine_frame, text="Add Supplier", command=addSupplier)
-        add_supplier.grid(row=4, column=1, padx=(5,15), pady=(5,5))
+        add_supplier.grid(row=4, column=1, padx=(5,15), pady=(5,35))
+
+        medicine_amout_label = ctk.CTkLabel(add_medicine_frame, text="Quantity", width=50, font=('Bold', 17), justify="left")
+        medicine_amout_entry = ctk.CTkEntry(add_medicine_frame, placeholder_text="Quantity Of The Medicine", width=200)
+        medicine_amout_label.grid(row=4, column=0, padx=(15,0), pady=(50,5), sticky="w")
+        medicine_amout_entry.grid(row=4, column=1, padx=(5,15), pady=(50,5))
+
+        current_date = datetime.now()
+        mystr = StringVar()
+        dateString = current_date.strftime("%d/ %m/ %y")
+        mystr.set(dateString)
+
+        medicine_date_label = ctk.CTkLabel(add_medicine_frame, text="Date", width=50, font=('Bold', 17), justify="left")
+        medicine_date_entry = ctk.CTkEntry(add_medicine_frame, state='disabled', textvariable=mystr, width=200)
+        medicine_date_label.grid(row=5, column=0, padx=(15,0), pady=(5,5), sticky="w")
+        medicine_date_entry.grid(row=5, column=1, padx=(5,15), pady=(5,5))
+
+        myfont = ctk.CTkFont('Helvetica', size=20, weight="bold")
+
+        add_medicine_btn = ctk.CTkButton(add_medicine_frame, text="Add Medicine", width=320, font=myfont, command=addMedicine)
+        add_medicine_btn.place(relx=0.5, rely=0.3, anchor=CENTER)
 
 
 
